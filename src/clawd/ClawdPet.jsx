@@ -97,7 +97,7 @@ const DRAG_THRESHOLD = 5;
 const CLICK_WINDOW_MS = 400;
 const DOUBLE_FRAME_MS = 450;
 const ANNOYED_CLICK_COUNT = 4;
-const CLAWD_VIEWBOX = "-2 4 21 14";
+const CLAWD_VIEWBOX = "-8 -12 31 31";
 const EYE_TRACKING_EASE = 0.18;
 const NEUTRAL_TRACKING = {
   eyeX: 0,
