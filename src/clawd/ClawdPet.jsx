@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { CLAWD_THEME, DEFAULT_CLAWD_STATE, isKnownClawdState } from "./theme";
 
@@ -175,10 +174,8 @@ export default function ClawdPet() {
     }, CLICK_WINDOW_MS);
   }
 
-  async function moveWindowBy(dx, dy) {
-    const appWindow = getCurrentWindow();
-    const position = await appWindow.outerPosition();
-    await appWindow.setPosition(new PhysicalPosition(position.x + dx, position.y + dy));
+  async function startWindowDrag() {
+    await getCurrentWindow().startDragging();
   }
 
   async function saveCurrentWindowPosition() {
@@ -207,22 +204,16 @@ export default function ClawdPet() {
     const totalDy = event.clientY - drag.startY;
     if (!isDraggingRef.current && Math.hypot(totalDx, totalDy) < DRAG_THRESHOLD) return;
 
-    const stepDx = event.clientX - drag.lastX;
-    const stepDy = event.clientY - drag.lastY;
-    drag.lastX = event.clientX;
-    drag.lastY = event.clientY;
-
     if (!isDraggingRef.current) {
       resetClickAccumulator();
       isDraggingRef.current = true;
       setDragging(true);
       playReaction("drag");
-    }
-
-    try {
-      await moveWindowBy(stepDx, stepDy);
-    } catch (error) {
-      console.warn("failed to move Clawd window", error);
+      try {
+        await startWindowDrag();
+      } catch (error) {
+        console.warn("failed to start Clawd window drag", error);
+      }
     }
   }
 
