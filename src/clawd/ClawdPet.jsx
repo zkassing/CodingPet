@@ -106,6 +106,7 @@ const NEUTRAL_TRACKING = {
   shadowScale: 1,
 };
 const SHOW_STATUS = import.meta.env.DEV;
+const SETTINGS_CLICK_COUNT = 5;
 const UPDATE_STATUS = {
   IDLE: "idle",
   AVAILABLE: "available",
@@ -131,6 +132,7 @@ export default function ClawdPet() {
   const isDraggingRef = useRef(false);
   const updateCheckStartedRef = useRef(false);
   const clickCountRef = useRef(0);
+  const settingsClickCountRef = useRef(0);
   const clickTimerRef = useRef(null);
   const doubleFrameTimerRef = useRef(null);
   const [state, setState] = useState(DEFAULT_CLAWD_STATE);
@@ -138,6 +140,7 @@ export default function ClawdPet() {
   const [dragging, setDragging] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
   const [updateState, setUpdateState] = useState({ status: UPDATE_STATUS.IDLE, update: null, error: null });
+  const [petScale, setPetScale] = useState(1.0);
 
   useEffect(() => {
     if (updateCheckStartedRef.current) return undefined;
@@ -155,6 +158,34 @@ export default function ClawdPet() {
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // Load preferences on mount
+  useEffect(() => {
+    let cancelled = false;
+    let unlisten = null;
+
+    const applyPrefs = (prefs) => {
+      if (!cancelled && prefs) setPetScale(prefs.size || 1.0);
+    };
+
+    invoke("load_preferences")
+      .then(applyPrefs)
+      .catch((error) => {
+        console.warn("failed to load preferences", error);
+      });
+
+    listen("preferences-changed", (event) => {
+      applyPrefs(event.payload);
+    }).then((cleanup) => {
+      if (cancelled) cleanup();
+      else unlisten = cleanup;
+    });
+
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
     };
   }, []);
 
@@ -268,6 +299,14 @@ export default function ClawdPet() {
     clickCountRef.current = 0;
   }
 
+  async function openSettings() {
+    try {
+      await invoke("open_settings_window");
+    } catch (error) {
+      console.warn("failed to open settings", error);
+    }
+  }
+
   function handleClick(button) {
     if (button === 2) {
       resetClickAccumulator();
@@ -276,11 +315,21 @@ export default function ClawdPet() {
     }
 
     clickCountRef.current += 1;
+    settingsClickCountRef.current += 1;
+
     if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+
+    // Quick click 5 times to open settings
+    if (settingsClickCountRef.current >= SETTINGS_CLICK_COUNT) {
+      settingsClickCountRef.current = 0;
+      openSettings();
+      return;
+    }
 
     clickTimerRef.current = window.setTimeout(() => {
       const count = clickCountRef.current;
       resetClickAccumulator();
+      settingsClickCountRef.current = 0;
       if (count >= ANNOYED_CLICK_COUNT) playReaction("annoyed");
       else if (count >= 2) playReaction("double");
       else playReaction("clickLeft");
@@ -402,8 +451,13 @@ export default function ClawdPet() {
     };
   }, [svgFile]);
 
+  const shellStyle = {
+    transform: `scale(${petScale})`,
+    transformOrigin: "center center",
+  };
+
   return (
-    <main className="clawd-shell">
+    <main className="clawd-shell" style={shellStyle}>
       <section
         ref={stageRef}
         className={`clawd-stage${dragging ? " dragging" : ""}`}
