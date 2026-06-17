@@ -38,25 +38,46 @@ function resetTrackedEyes(eyes) {
   });
 }
 
-function applyIdleTracking(svgRoot, pointer, rect) {
-  if (!svgRoot || !pointer || !rect) return;
-  const tracking = CLAWD_THEME.eyeTracking;
-  const eyes = svgRoot.getElementById(tracking.ids.eyes);
-  const shadow = svgRoot.getElementById(tracking.ids.shadow);
-  if (!eyes && !shadow) return;
+function getIdleTrackingTarget(pointer, rect) {
+  if (!pointer || !rect) return NEUTRAL_TRACKING;
 
+  const tracking = CLAWD_THEME.eyeTracking;
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
   const dx = clamp((pointer.x - centerX) / Math.max(rect.width / 2, 1), -1, 1);
   const dy = clamp((pointer.y - centerY) / Math.max(rect.height / 2, 1), -1, 1);
 
-  const eyeX = dx * tracking.maxOffset;
-  const eyeY = dy * tracking.maxOffset * tracking.verticalScale;
-  const shadowX = dx * tracking.shadowShift;
-  const shadowScale = 1 + Math.abs(dx) * tracking.shadowStretch;
+  return {
+    eyeX: dx * tracking.maxOffset,
+    eyeY: dy * tracking.maxOffset * tracking.verticalScale,
+    shadowX: dx * tracking.shadowShift,
+    shadowScale: 1 + Math.abs(dx) * tracking.shadowStretch,
+  };
+}
 
-  if (eyes) setTrackedEyeOffset(eyes, eyeX, eyeY);
-  if (shadow) shadow.setAttribute("transform", `translate(${shadowX.toFixed(2)} 0) scale(${shadowScale.toFixed(2)} 1)`);
+function easeTracking(current, target) {
+  return {
+    eyeX: current.eyeX + (target.eyeX - current.eyeX) * EYE_TRACKING_EASE,
+    eyeY: current.eyeY + (target.eyeY - current.eyeY) * EYE_TRACKING_EASE,
+    shadowX: current.shadowX + (target.shadowX - current.shadowX) * EYE_TRACKING_EASE,
+    shadowScale: current.shadowScale + (target.shadowScale - current.shadowScale) * EYE_TRACKING_EASE,
+  };
+}
+
+function applyIdleTracking(svgRoot, offsets) {
+  if (!svgRoot) return;
+  const tracking = CLAWD_THEME.eyeTracking;
+  const eyes = svgRoot.getElementById(tracking.ids.eyes);
+  const shadow = svgRoot.getElementById(tracking.ids.shadow);
+  if (!eyes && !shadow) return;
+
+  if (eyes) setTrackedEyeOffset(eyes, offsets.eyeX, offsets.eyeY);
+  if (shadow) {
+    shadow.setAttribute(
+      "transform",
+      `translate(${offsets.shadowX.toFixed(2)} 0) scale(${offsets.shadowScale.toFixed(2)} 1)`,
+    );
+  }
 }
 
 function resetTracking(svgRoot) {
@@ -77,6 +98,13 @@ const CLICK_WINDOW_MS = 400;
 const DOUBLE_FRAME_MS = 450;
 const ANNOYED_CLICK_COUNT = 4;
 const CLAWD_VIEWBOX = "-2 4 21 14";
+const EYE_TRACKING_EASE = 0.18;
+const NEUTRAL_TRACKING = {
+  eyeX: 0,
+  eyeY: 0,
+  shadowX: 0,
+  shadowScale: 1,
+};
 const SHOW_STATUS = import.meta.env.DEV;
 const UPDATE_STATUS = {
   IDLE: "idle",
@@ -98,6 +126,7 @@ export default function ClawdPet() {
   const svgHostRef = useRef(null);
   const stageRef = useRef(null);
   const pointerRef = useRef(null);
+  const trackingOffsetRef = useRef(NEUTRAL_TRACKING);
   const dragStartRef = useRef(null);
   const isDraggingRef = useRef(false);
   const updateCheckStartedRef = useRef(false);
@@ -177,8 +206,12 @@ export default function ClawdPet() {
       const svgRoot = svgHostRef.current?.querySelector("svg");
       if (trackingStates.has(state)) {
         const rect = svgHostRef.current?.getBoundingClientRect();
-        applyIdleTracking(svgRoot, pointerRef.current, rect);
+        const target = getIdleTrackingTarget(pointerRef.current, rect);
+        const nextOffsets = easeTracking(trackingOffsetRef.current, target);
+        trackingOffsetRef.current = nextOffsets;
+        applyIdleTracking(svgRoot, nextOffsets);
       } else {
+        trackingOffsetRef.current = NEUTRAL_TRACKING;
         resetTracking(svgRoot);
       }
       animationFrame = window.requestAnimationFrame(tick);
