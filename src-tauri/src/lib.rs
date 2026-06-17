@@ -1,6 +1,7 @@
 mod server;
 mod window_position;
 
+#[cfg(not(target_os = "macos"))]
 use enigo::Mouse;
 use tauri::Manager;
 
@@ -13,11 +14,26 @@ fn save_window_position(x: i32, y: i32) -> Result<(), String> {
 
 #[tauri::command]
 fn get_cursor_position() -> Result<(f64, f64), String> {
-    let enigo = enigo::Enigo::new(&enigo::Settings::default())
-        .map_err(|error| error.to_string())?;
-    enigo.location()
-        .map(|(x, y)| (x as f64, y as f64))
-        .map_err(|error| error.to_string())
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::event::CGEvent;
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+            .map_err(|_| "Failed to create CGEventSource")?;
+        let event = CGEvent::new(source).map_err(|_| "Failed to create CGEvent")?;
+        let point = event.location();
+        Ok((point.x as f64, point.y as f64))
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        use enigo::Mouse;
+        let enigo = enigo::Enigo::new(&enigo::Settings::default())
+            .map_err(|error| error.to_string())?;
+        enigo.location()
+            .map(|(x, y)| (x as f64, y as f64))
+            .map_err(|error| error.to_string())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
