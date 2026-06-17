@@ -76,6 +76,7 @@ const DRAG_THRESHOLD = 5;
 const CLICK_WINDOW_MS = 400;
 const DOUBLE_FRAME_MS = 450;
 const ANNOYED_CLICK_COUNT = 4;
+const CLAWD_VIEWBOX = "-2 4 21 14";
 const SHOW_STATUS = import.meta.env.DEV;
 const UPDATE_STATUS = {
   IDLE: "idle",
@@ -83,6 +84,10 @@ const UPDATE_STATUS = {
   DOWNLOADING: "downloading",
   ERROR: "error",
 };
+
+function cropClawdSvg(markup) {
+  return markup.replace(/<svg\b([^>]*)\bviewBox="[^"]*"/, `<svg$1viewBox="${CLAWD_VIEWBOX}"`);
+}
 
 function getSvgForStateFrame(state, frame) {
   const files = CLAWD_THEME.states[state] || CLAWD_THEME.states[DEFAULT_CLAWD_STATE];
@@ -353,7 +358,7 @@ export default function ClawdPet() {
     fetch(`/clawd/svg/${svgFile}`)
       .then((response) => response.text())
       .then((markup) => {
-        if (!cancelled) setSvgMarkup(markup);
+        if (!cancelled) setSvgMarkup(cropClawdSvg(markup));
       })
       .catch((error) => {
         console.warn("failed to load Clawd SVG", error);

@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "Clawd",
-        "width": 220,
-        "height": 220,
+        "width": 126,
+        "height": 84,
         "resizable": false,
         "decorations": false,
         "shadow": false,
