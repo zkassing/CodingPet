@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 import { CLAWD_THEME, DEFAULT_CLAWD_STATE, isKnownClawdState } from "./theme";
 
 function normalizePayload(payload) {
@@ -53,6 +55,12 @@ const CLICK_WINDOW_MS = 400;
 const DOUBLE_FRAME_MS = 450;
 const ANNOYED_CLICK_COUNT = 4;
 const SHOW_STATUS = import.meta.env.DEV;
+const UPDATE_STATUS = {
+  IDLE: "idle",
+  AVAILABLE: "available",
+  DOWNLOADING: "downloading",
+  ERROR: "error",
+};
 
 function getSvgForStateFrame(state, frame) {
   const files = CLAWD_THEME.states[state] || CLAWD_THEME.states[DEFAULT_CLAWD_STATE];
@@ -65,6 +73,7 @@ export default function ClawdPet() {
   const pointerRef = useRef(null);
   const dragStartRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const updateCheckStartedRef = useRef(false);
   const clickCountRef = useRef(0);
   const clickTimerRef = useRef(null);
   const doubleFrameTimerRef = useRef(null);
@@ -72,6 +81,26 @@ export default function ClawdPet() {
   const [reactionFrame, setReactionFrame] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
+  const [updateState, setUpdateState] = useState({ status: UPDATE_STATUS.IDLE, update: null, error: null });
+
+  useEffect(() => {
+    if (updateCheckStartedRef.current) return undefined;
+    updateCheckStartedRef.current = true;
+    let cancelled = false;
+
+    check()
+      .then((update) => {
+        if (cancelled || !update) return;
+        setUpdateState({ status: UPDATE_STATUS.AVAILABLE, update, error: null });
+      })
+      .catch((error) => {
+        console.warn("failed to check CodingPet update", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let unlisten = null;
@@ -184,6 +213,26 @@ export default function ClawdPet() {
     await invoke("save_window_position", { x: position.x, y: position.y });
   }
 
+  async function installUpdate() {
+    if (!updateState.update || updateState.status === UPDATE_STATUS.DOWNLOADING) return;
+    setUpdateState((current) => ({ ...current, status: UPDATE_STATUS.DOWNLOADING, error: null }));
+    try {
+      await updateState.update.downloadAndInstall();
+      await relaunch();
+    } catch (error) {
+      console.warn("failed to install CodingPet update", error);
+      setUpdateState((current) => ({
+        ...current,
+        status: UPDATE_STATUS.ERROR,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  }
+
+  function dismissUpdate() {
+    setUpdateState({ status: UPDATE_STATUS.IDLE, update: null, error: null });
+  }
+
   function handlePointerDown(event) {
     if (event.button !== 0 && event.button !== 2) return;
     event.preventDefault();
@@ -250,6 +299,9 @@ export default function ClawdPet() {
   const [svgMarkup, setSvgMarkup] = useState("");
   const eventLabel = lastEvent?.event || "waiting";
   const sessionLabel = lastEvent?.session_id || "default";
+  const updateVersion = updateState.update?.version;
+  const isInstallingUpdate = updateState.status === UPDATE_STATUS.DOWNLOADING;
+  const showUpdatePrompt = updateState.status !== UPDATE_STATUS.IDLE;
 
   useEffect(() => {
     let cancelled = false;
@@ -286,6 +338,26 @@ export default function ClawdPet() {
           dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       </section>
+      {showUpdatePrompt ? (
+        <section className="clawd-update" aria-live="polite">
+          <strong>{updateState.status === UPDATE_STATUS.ERROR ? "更新失败" : "发现新版本"}</strong>
+          <span>
+            {updateState.status === UPDATE_STATUS.ERROR
+              ? updateState.error || "请稍后重试"
+              : updateVersion
+                ? `v${updateVersion}`
+                : "可以更新啦"}
+          </span>
+          <div className="clawd-update-actions">
+            <button type="button" onClick={installUpdate} disabled={isInstallingUpdate}>
+              {isInstallingUpdate ? "安装中…" : "更新"}
+            </button>
+            <button type="button" onClick={dismissUpdate} disabled={isInstallingUpdate} aria-label="稍后再说">
+              稍后
+            </button>
+          </div>
+        </section>
+      ) : null}
       {SHOW_STATUS ? (
         <section className="clawd-status">
           <strong>{state}</strong>

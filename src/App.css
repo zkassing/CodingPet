@@ -65,7 +65,8 @@ body,
   background: transparent !important;
 }
 
-.clawd-status {
+.clawd-status,
+.clawd-update {
   flex: 0 0 auto;
   max-width: 190px;
   box-sizing: border-box;
@@ -80,19 +81,49 @@ body,
   background: rgba(20, 20, 24, 0.58);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(8px);
-  pointer-events: none;
   font-size: 10px;
   line-height: 1.25;
   text-align: center;
 }
 
-.clawd-status strong {
+.clawd-status {
+  pointer-events: none;
+}
+
+.clawd-status strong,
+.clawd-update strong {
   color: #ffb86c;
   font-size: 12px;
 }
 
+.clawd-update {
+  gap: 3px;
+  pointer-events: auto;
+}
+
+.clawd-update-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.clawd-update button {
+  border: 1px solid rgba(255, 184, 108, 0.34);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #f6f6f6;
+  background: rgba(255, 184, 108, 0.18);
+  font: inherit;
+  cursor: pointer;
+}
+
+.clawd-update button:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
 .clawd-status span,
-.clawd-status small {
+.clawd-status small,
+.clawd-update span {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
