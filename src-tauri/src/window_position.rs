@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use tauri::{PhysicalPosition, Position, WebviewWindow};
 
 const POSITION_FILE_NAME: &str = "codingpet-window.json";
-const VISIBLE_MARGIN: i32 = 50;
+const VISIBLE_MARGIN: i32 = 120;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct WindowPosition {

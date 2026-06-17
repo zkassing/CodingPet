@@ -3,7 +3,7 @@ mod window_position;
 
 use tauri::Manager;
 
-const WINDOW_OFFSET_Y: i32 = 60;
+const WINDOW_OFFSET_Y: i32 = -60;
 
 #[tauri::command]
 fn save_window_position(x: i32, y: i32) -> Result<(), String> {
@@ -22,6 +22,9 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 if let Err(error) = window.set_shadow(false) {
                     eprintln!("failed to disable Clawd window shadow: {error}");
+                }
+                if let Err(error) = window.set_ignore_cursor_events(true) {
+                    eprintln!("failed to enable Clawd window mouse passthrough: {error}");
                 }
                 window_position::restore_or_offset_window(&window, WINDOW_OFFSET_Y);
             }
