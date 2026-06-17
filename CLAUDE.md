@@ -72,6 +72,8 @@ The Rust backend starts a local HTTP server on `127.0.0.1:23333-23337` and write
 
 The server validates incoming states and emits `clawd-state-change` through Tauri. The React frontend listens for that event in `src/clawd/ClawdPet.jsx`, maps the state through `src/clawd/theme.js`, and renders SVG assets from `public/clawd/svg/`.
 
+Dragged window position is saved to `~/.clawd/codingpet-window.json` and restored on startup. Delete that file to reset placement to the default startup offset.
+
 This MVP intentionally does not implement `/permission` approval bubbles; Claude Code permissions remain in Claude Code's native flow.
 
 ### Tauri app structure

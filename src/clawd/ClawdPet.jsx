@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -180,6 +181,11 @@ export default function ClawdPet() {
     await appWindow.setPosition(new PhysicalPosition(position.x + dx, position.y + dy));
   }
 
+  async function saveCurrentWindowPosition() {
+    const position = await getCurrentWindow().outerPosition();
+    await invoke("save_window_position", { x: position.x, y: position.y });
+  }
+
   function handlePointerDown(event) {
     if (event.button !== 0 && event.button !== 2) return;
     event.preventDefault();
@@ -230,6 +236,9 @@ export default function ClawdPet() {
       isDraggingRef.current = false;
       setDragging(false);
       setState(DEFAULT_CLAWD_STATE);
+      saveCurrentWindowPosition().catch((error) => {
+        console.warn("failed to save Clawd window position", error);
+      });
       return;
     }
 
