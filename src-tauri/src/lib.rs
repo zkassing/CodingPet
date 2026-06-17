@@ -23,9 +23,6 @@ pub fn run() {
                 if let Err(error) = window.set_shadow(false) {
                     eprintln!("failed to disable Clawd window shadow: {error}");
                 }
-                if let Err(error) = window.set_ignore_cursor_events(true) {
-                    eprintln!("failed to enable Clawd window mouse passthrough: {error}");
-                }
                 window_position::restore_or_offset_window(&window, WINDOW_OFFSET_Y);
             }
             Ok(())

@@ -32,6 +32,7 @@ body,
   background: transparent;
   user-select: none;
   -webkit-user-select: none;
+  pointer-events: none;
 }
 
 .clawd-stage {
@@ -43,6 +44,7 @@ body,
   background: transparent;
   cursor: grab;
   touch-action: none;
+  pointer-events: auto;
 }
 
 .clawd-stage.dragging {
