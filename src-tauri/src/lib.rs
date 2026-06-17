@@ -2,6 +2,8 @@ mod server;
 mod window_position;
 
 use tauri::Manager;
+use tauri::tray::TrayIconBuilder;
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 
 const WINDOW_OFFSET_Y: i32 = -60;
 
@@ -34,6 +36,38 @@ pub fn run() {
                 }
                 window_position::restore_or_offset_window(&window, WINDOW_OFFSET_Y);
             }
+
+            // Create system tray
+            let show_item = MenuItem::new(app, "Show Clawd", true, None::<&str>)?;
+            let hide_item = MenuItem::new(app, "Hide Clawd", true, None::<&str>)?;
+            let quit_item = PredefinedMenuItem::quit(app, Some("Quit"))?;
+
+            let menu = Menu::with_items(app, &[&show_item, &hide_item, &quit_item])?;
+
+            // Load custom tray icon from embedded bytes
+            let tray_icon_bytes = include_bytes!("../icons/tray-icon.png");
+            let tray_icon = tauri::image::Image::from_bytes(tray_icon_bytes)?;
+
+            let _tray = TrayIconBuilder::with_id("tray-main")
+                .icon(tray_icon)
+                .icon_as_template(true) // For macOS: makes it adapt to light/dark mode
+                .tooltip("Clawd Coding Pet")
+                .menu(&menu)
+                .on_menu_event(move |app, event| match event.id().as_ref() {
+                    id if id == show_item.id().as_ref() => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                        }
+                    }
+                    id if id == hide_item.id().as_ref() => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.hide();
+                        }
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
             Ok(())
         })
         .run(tauri::generate_context!())
