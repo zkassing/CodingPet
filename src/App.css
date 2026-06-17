@@ -22,53 +22,62 @@ body,
 .clawd-shell {
   width: 100vw;
   height: 100vh;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 0;
+  padding: 8px 6px 6px;
+  background: transparent;
   user-select: none;
   -webkit-user-select: none;
 }
 
 .clawd-stage {
-  width: min(72vw, 160px);
-  height: min(72vw, 160px);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   display: grid;
   place-items: center;
+  background: transparent;
   filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35));
 }
 
 .clawd-pet {
-  width: 190%;
-  height: 130%;
+  width: min(170%, 210px);
+  height: min(120%, 165px);
   border: 0;
+  background: transparent;
   object-fit: contain;
   image-rendering: pixelated;
   pointer-events: none;
 }
 
 .clawd-status {
+  flex: 0 0 auto;
   max-width: 190px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 6px 9px;
+  margin-top: 2px;
+  padding: 4px 8px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(20, 20, 24, 0.58);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(8px);
-  font-size: 11px;
+  pointer-events: none;
+  font-size: 10px;
   line-height: 1.25;
   text-align: center;
 }
 
 .clawd-status strong {
   color: #ffb86c;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .clawd-status span,
