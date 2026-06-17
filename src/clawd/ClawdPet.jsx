@@ -19,6 +19,25 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function setTrackedEyeOffset(eyes, offsetX, offsetY) {
+  eyes.querySelectorAll("rect").forEach((eye) => {
+    if (!eye.dataset.baseX) eye.dataset.baseX = eye.getAttribute("x") || "0";
+    if (!eye.dataset.baseY) eye.dataset.baseY = eye.getAttribute("y") || "0";
+
+    const baseX = Number.parseFloat(eye.dataset.baseX);
+    const baseY = Number.parseFloat(eye.dataset.baseY);
+    eye.setAttribute("x", (baseX + offsetX).toFixed(2));
+    eye.setAttribute("y", (baseY + offsetY).toFixed(2));
+  });
+}
+
+function resetTrackedEyes(eyes) {
+  eyes.querySelectorAll("rect").forEach((eye) => {
+    if (eye.dataset.baseX) eye.setAttribute("x", eye.dataset.baseX);
+    if (eye.dataset.baseY) eye.setAttribute("y", eye.dataset.baseY);
+  });
+}
+
 function applyIdleTracking(svgRoot, pointer, rect) {
   if (!svgRoot || !pointer || !rect) return;
   const tracking = CLAWD_THEME.eyeTracking;
@@ -36,7 +55,7 @@ function applyIdleTracking(svgRoot, pointer, rect) {
   const shadowX = dx * tracking.shadowShift;
   const shadowScale = 1 + Math.abs(dx) * tracking.shadowStretch;
 
-  if (eyes) eyes.setAttribute("transform", `translate(${eyeX.toFixed(2)} ${eyeY.toFixed(2)})`);
+  if (eyes) setTrackedEyeOffset(eyes, eyeX, eyeY);
   if (shadow) shadow.setAttribute("transform", `translate(${shadowX.toFixed(2)} 0) scale(${shadowScale.toFixed(2)} 1)`);
 }
 
@@ -48,6 +67,7 @@ function resetTracking(svgRoot) {
     if (element) {
       element.style.transform = "";
       element.removeAttribute("transform");
+      if (id === ids.eyes) resetTrackedEyes(element);
     }
   });
 }
