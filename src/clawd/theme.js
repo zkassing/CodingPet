@@ -19,6 +19,18 @@ export const CLAWD_THEME = {
     carrying: 3000,
     waking: 1500,
   },
+  eyeTracking: {
+    states: ["idle"],
+    ids: {
+      eyes: "eyes-js",
+      body: "body-js",
+      shadow: "shadow-js",
+    },
+    maxOffset: 3,
+    bodyScale: 0.33,
+    shadowStretch: 0.15,
+    shadowShift: 0.3,
+  },
 };
 
 export const DEFAULT_CLAWD_STATE = "idle";
