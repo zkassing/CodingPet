@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { CLAWD_THEME, DEFAULT_CLAWD_STATE, isKnownClawdState } from "./theme";
@@ -24,22 +23,21 @@ function applyIdleTracking(svgRoot, pointer, rect) {
   if (!svgRoot || !pointer || !rect) return;
   const tracking = CLAWD_THEME.eyeTracking;
   const eyes = svgRoot.getElementById(tracking.ids.eyes);
-  const body = svgRoot.getElementById(tracking.ids.body);
   const shadow = svgRoot.getElementById(tracking.ids.shadow);
-  if (!eyes && !body && !shadow) return;
+  if (!eyes && !shadow) return;
 
-  const dx = clamp((pointer.x - (rect.left + rect.width / 2)) / (rect.width / 2), -1, 1);
-  const dy = clamp((pointer.y - (rect.top + rect.height / 2)) / (rect.height / 2), -1, 1);
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = clamp((pointer.x - centerX) / Math.max(rect.width / 2, 1), -1, 1);
+  const dy = clamp((pointer.y - centerY) / Math.max(rect.height / 2, 1), -1, 1);
+
   const eyeX = dx * tracking.maxOffset;
-  const eyeY = dy * tracking.maxOffset * 0.55;
-  const bodyX = dx * tracking.maxOffset * tracking.bodyScale;
-  const bodyY = dy * tracking.maxOffset * tracking.bodyScale * 0.35;
+  const eyeY = dy * tracking.maxOffset * tracking.verticalScale;
   const shadowX = dx * tracking.shadowShift;
   const shadowScale = 1 + Math.abs(dx) * tracking.shadowStretch;
 
-  if (eyes) eyes.style.transform = `translate(${eyeX}px, ${eyeY}px)`;
-  if (body) body.style.transform = `translate(${bodyX}px, ${bodyY}px)`;
-  if (shadow) shadow.style.transform = `translate(${shadowX}px, 0) scale(${shadowScale}, 1)`;
+  if (eyes) eyes.setAttribute("transform", `translate(${eyeX.toFixed(2)} ${eyeY.toFixed(2)})`);
+  if (shadow) shadow.setAttribute("transform", `translate(${shadowX.toFixed(2)} 0) scale(${shadowScale.toFixed(2)} 1)`);
 }
 
 function resetTracking(svgRoot) {
@@ -47,7 +45,10 @@ function resetTracking(svgRoot) {
   const ids = CLAWD_THEME.eyeTracking.ids;
   [ids.eyes, ids.body, ids.shadow].forEach((id) => {
     const element = svgRoot.getElementById(id);
-    if (element) element.style.transform = "";
+    if (element) {
+      element.style.transform = "";
+      element.removeAttribute("transform");
+    }
   });
 }
 
@@ -150,7 +151,8 @@ export default function ClawdPet() {
     const tick = () => {
       const svgRoot = svgHostRef.current?.querySelector("svg");
       if (trackingStates.has(state)) {
-        applyIdleTracking(svgRoot, pointerRef.current, stageRef.current?.getBoundingClientRect());
+        const rect = svgHostRef.current?.getBoundingClientRect();
+        applyIdleTracking(svgRoot, pointerRef.current, rect);
       } else {
         resetTracking(svgRoot);
       }
@@ -162,31 +164,33 @@ export default function ClawdPet() {
   }, [state]);
 
   useEffect(() => {
-    let lastUpdate = 0;
+    let cancelled = false;
     let intervalTimer = 0;
-    const appWindow = WebviewWindow.getCurrent();
+    const appWindow = getCurrentWindow();
 
     const updateGlobalCursor = async () => {
-      const now = performance.now();
-      if (now - lastUpdate < 32) return;
-      lastUpdate = now;
-
       try {
-        const [cursorPos, windowPos] = await Promise.all([
-          invoke("get_cursor_position"),
+        const [cursor, windowPosition, scaleFactor] = await Promise.all([
+          cursorPosition(),
           appWindow.outerPosition(),
+          appWindow.scaleFactor(),
         ]);
+        if (cancelled) return;
         pointerRef.current = {
-          x: cursorPos[0] - windowPos.x,
-          y: cursorPos[1] - windowPos.y,
+          x: (cursor.x - windowPosition.x) / scaleFactor,
+          y: (cursor.y - windowPosition.y) / scaleFactor,
         };
       } catch (error) {
-        // Silently fall back
+        if (!cancelled) console.warn("failed to update Clawd cursor tracking", error);
       }
     };
 
+    updateGlobalCursor();
     intervalTimer = window.setInterval(updateGlobalCursor, 32);
-    return () => window.clearInterval(intervalTimer);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalTimer);
+    };
   }, []);
 
   function playReaction(nextState) {

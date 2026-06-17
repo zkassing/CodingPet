@@ -16,8 +16,7 @@ fn save_window_position(x: i32, y: i32) -> Result<(), String> {
 fn get_cursor_position() -> Result<(f64, f64), String> {
     #[cfg(target_os = "macos")]
     {
-        use core_graphics::display::CGDisplayBounds;
-        use core_graphics::display::CGMainDisplayID;
+        use core_graphics::display::{CGDisplayBounds, CGMainDisplayID};
         use core_graphics::event::CGEvent;
         use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
@@ -26,11 +25,11 @@ fn get_cursor_position() -> Result<(f64, f64), String> {
         let event = CGEvent::new(source).map_err(|_| "Failed to create CGEvent")?;
         let point = event.location();
 
-        // Convert from Core Graphics bottom-left origin to top-left origin
         unsafe {
             let main_display = CGMainDisplayID();
             let bounds = CGDisplayBounds(main_display);
             let screen_height = bounds.size.height;
+            // Core Graphics uses bottom-left origin, flip to top-left
             let flipped_y = screen_height - point.y;
             Ok((point.x as f64, flipped_y as f64))
         }

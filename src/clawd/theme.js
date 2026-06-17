@@ -35,9 +35,9 @@ export const CLAWD_THEME = {
       body: "body-js",
       shadow: "shadow-js",
     },
-    maxOffset: 3,
-    bodyScale: 0.33,
-    shadowStretch: 0.15,
+    maxOffset: 0.8,
+    verticalScale: 0.45,
+    shadowStretch: 0.08,
     shadowShift: 0.3,
   },
 };
