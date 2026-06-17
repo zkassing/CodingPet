@@ -30,6 +30,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -40,7 +41,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "TODO_REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgxMEZERkY3ODk0ODIyQ0MKUldUTUlraUo5OThQZ2FpMi9tUjhjajJLZ081NDFuWnY5RlVSZzRkNmxPL056U0ZsbEcvU0VvL0kK",
       "endpoints": [
         "https://github.com/zkassing/CodingPet/releases/latest/download/latest.json"
       ]
