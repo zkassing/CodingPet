@@ -11,6 +11,11 @@ export const CLAWD_THEME = {
     carrying: ["clawd-working-carrying.svg"],
     sleeping: ["clawd-sleeping.svg"],
     waking: ["clawd-wake.svg"],
+    drag: ["clawd-react-drag.svg"],
+    clickLeft: ["clawd-react-left.svg"],
+    clickRight: ["clawd-react-right.svg"],
+    annoyed: ["clawd-react-annoyed.svg"],
+    double: ["clawd-react-double.svg", "clawd-react-double-jump.svg"],
   },
   autoReturn: {
     attention: 4000,
@@ -18,6 +23,10 @@ export const CLAWD_THEME = {
     notification: 5000,
     carrying: 3000,
     waking: 1500,
+    clickLeft: 2500,
+    clickRight: 2500,
+    annoyed: 3500,
+    double: 3500,
   },
   eyeTracking: {
     states: ["idle"],

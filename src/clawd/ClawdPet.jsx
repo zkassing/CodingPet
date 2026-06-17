@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { CLAWD_THEME, DEFAULT_CLAWD_STATE, getClawdSvgForState, isKnownClawdState } from "./theme";
+import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { CLAWD_THEME, DEFAULT_CLAWD_STATE, isKnownClawdState } from "./theme";
 
 function normalizePayload(payload) {
   if (!payload || typeof payload !== "object") return null;
@@ -46,11 +48,28 @@ function resetTracking(svgRoot) {
   });
 }
 
+const DRAG_THRESHOLD = 5;
+const CLICK_WINDOW_MS = 400;
+const DOUBLE_FRAME_MS = 450;
+const ANNOYED_CLICK_COUNT = 4;
+
+function getSvgForStateFrame(state, frame) {
+  const files = CLAWD_THEME.states[state] || CLAWD_THEME.states[DEFAULT_CLAWD_STATE];
+  return files[Math.min(frame, files.length - 1)] || files[0];
+}
+
 export default function ClawdPet() {
   const objectRef = useRef(null);
   const stageRef = useRef(null);
   const pointerRef = useRef(null);
+  const dragStartRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef(null);
+  const doubleFrameTimerRef = useRef(null);
   const [state, setState] = useState(DEFAULT_CLAWD_STATE);
+  const [reactionFrame, setReactionFrame] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [lastEvent, setLastEvent] = useState(null);
 
   useEffect(() => {
@@ -72,6 +91,19 @@ export default function ClawdPet() {
       if (unlisten) unlisten();
     };
   }, []);
+
+  useEffect(() => {
+    if (state !== "double") {
+      setReactionFrame(0);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setReactionFrame(1), DOUBLE_FRAME_MS);
+    doubleFrameTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      doubleFrameTimerRef.current = null;
+    };
+  }, [state]);
 
   useEffect(() => {
     const delay = CLAWD_THEME.autoReturn[state];
@@ -106,13 +138,129 @@ export default function ClawdPet() {
     return () => window.cancelAnimationFrame(animationFrame);
   }, [state]);
 
-  const svgFile = useMemo(() => getClawdSvgForState(state), [state]);
+  function playReaction(nextState) {
+    if (doubleFrameTimerRef.current) {
+      window.clearTimeout(doubleFrameTimerRef.current);
+      doubleFrameTimerRef.current = null;
+    }
+    setReactionFrame(0);
+    setState(nextState);
+  }
+
+  function resetClickAccumulator() {
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    clickCountRef.current = 0;
+  }
+
+  function handleClick(button) {
+    if (button === 2) {
+      resetClickAccumulator();
+      playReaction("clickRight");
+      return;
+    }
+
+    clickCountRef.current += 1;
+    if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+
+    clickTimerRef.current = window.setTimeout(() => {
+      const count = clickCountRef.current;
+      resetClickAccumulator();
+      if (count >= ANNOYED_CLICK_COUNT) playReaction("annoyed");
+      else if (count >= 2) playReaction("double");
+      else playReaction("clickLeft");
+    }, CLICK_WINDOW_MS);
+  }
+
+  async function moveWindowBy(dx, dy) {
+    const appWindow = getCurrentWindow();
+    const position = await appWindow.outerPosition();
+    await appWindow.setPosition(new PhysicalPosition(position.x + dx, position.y + dy));
+  }
+
+  function handlePointerDown(event) {
+    if (event.button !== 0 && event.button !== 2) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    dragStartRef.current = {
+      button: event.button,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
+    };
+  }
+
+  async function handlePointerMove(event) {
+    const drag = dragStartRef.current;
+    if (!drag || drag.button !== 0) return;
+    const totalDx = event.clientX - drag.startX;
+    const totalDy = event.clientY - drag.startY;
+    if (!isDraggingRef.current && Math.hypot(totalDx, totalDy) < DRAG_THRESHOLD) return;
+
+    const stepDx = event.clientX - drag.lastX;
+    const stepDy = event.clientY - drag.lastY;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+
+    if (!isDraggingRef.current) {
+      resetClickAccumulator();
+      isDraggingRef.current = true;
+      setDragging(true);
+      playReaction("drag");
+    }
+
+    try {
+      await moveWindowBy(stepDx, stepDy);
+    } catch (error) {
+      console.warn("failed to move Clawd window", error);
+    }
+  }
+
+  function handlePointerUp(event) {
+    const drag = dragStartRef.current;
+    if (!drag) return;
+    event.currentTarget.releasePointerCapture?.(drag.pointerId);
+    dragStartRef.current = null;
+
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setDragging(false);
+      setState(DEFAULT_CLAWD_STATE);
+      return;
+    }
+
+    handleClick(drag.button);
+  }
+
+  function handlePointerCancel() {
+    dragStartRef.current = null;
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setDragging(false);
+      setState(DEFAULT_CLAWD_STATE);
+    }
+  }
+
+  const svgFile = useMemo(() => getSvgForStateFrame(state, reactionFrame), [state, reactionFrame]);
   const eventLabel = lastEvent?.event || "waiting";
   const sessionLabel = lastEvent?.session_id || "default";
 
   return (
     <main className="clawd-shell">
-      <section ref={stageRef} className="clawd-stage" aria-label={`Clawd state: ${state}`}>
+      <section
+        ref={stageRef}
+        className={`clawd-stage${dragging ? " dragging" : ""}`}
+        aria-label={`Clawd state: ${state}`}
+        onContextMenu={(event) => event.preventDefault()}
+        onPointerCancel={handlePointerCancel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
         <object
           ref={objectRef}
           className="clawd-pet"
