@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { CLAWD_THEME, DEFAULT_CLAWD_STATE, isKnownClawdState } from "./theme";
@@ -143,14 +144,6 @@ export default function ClawdPet() {
   }, [state]);
 
   useEffect(() => {
-    const handlePointerMove = (event) => {
-      pointerRef.current = { x: event.clientX, y: event.clientY };
-    };
-    window.addEventListener("pointermove", handlePointerMove);
-    return () => window.removeEventListener("pointermove", handlePointerMove);
-  }, []);
-
-  useEffect(() => {
     let animationFrame = 0;
     const trackingStates = new Set(CLAWD_THEME.eyeTracking.states);
 
@@ -167,6 +160,34 @@ export default function ClawdPet() {
     tick();
     return () => window.cancelAnimationFrame(animationFrame);
   }, [state]);
+
+  useEffect(() => {
+    let lastUpdate = 0;
+    let intervalTimer = 0;
+    const appWindow = WebviewWindow.getCurrent();
+
+    const updateGlobalCursor = async () => {
+      const now = performance.now();
+      if (now - lastUpdate < 32) return;
+      lastUpdate = now;
+
+      try {
+        const [cursorPos, windowPos] = await Promise.all([
+          invoke("get_cursor_position"),
+          appWindow.outerPosition(),
+        ]);
+        pointerRef.current = {
+          x: cursorPos[0] - windowPos.x,
+          y: cursorPos[1] - windowPos.y,
+        };
+      } catch (error) {
+        // Silently fall back
+      }
+    };
+
+    intervalTimer = window.setInterval(updateGlobalCursor, 32);
+    return () => window.clearInterval(intervalTimer);
+  }, []);
 
   function playReaction(nextState) {
     if (doubleFrameTimerRef.current) {
