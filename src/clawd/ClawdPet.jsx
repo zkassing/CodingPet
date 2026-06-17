@@ -52,6 +52,7 @@ const DRAG_THRESHOLD = 5;
 const CLICK_WINDOW_MS = 400;
 const DOUBLE_FRAME_MS = 450;
 const ANNOYED_CLICK_COUNT = 4;
+const SHOW_STATUS = import.meta.env.DEV;
 
 function getSvgForStateFrame(state, frame) {
   const files = CLAWD_THEME.states[state] || CLAWD_THEME.states[DEFAULT_CLAWD_STATE];
@@ -285,11 +286,13 @@ export default function ClawdPet() {
           dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       </section>
-      <section className="clawd-status">
-        <strong>{state}</strong>
-        <span>{eventLabel}</span>
-        <small>{sessionLabel}{lastEvent?.receivedAt ? ` · ${lastEvent.receivedAt}` : ""}</small>
-      </section>
+      {SHOW_STATUS ? (
+        <section className="clawd-status">
+          <strong>{state}</strong>
+          <span>{eventLabel}</span>
+          <small>{sessionLabel}{lastEvent?.receivedAt ? ` · ${lastEvent.receivedAt}` : ""}</small>
+        </section>
+      ) : null}
     </main>
   );
 }
