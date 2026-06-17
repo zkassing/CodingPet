@@ -43,7 +43,6 @@ body,
   background: transparent;
   cursor: grab;
   touch-action: none;
-  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35));
 }
 
 .clawd-stage.dragging {

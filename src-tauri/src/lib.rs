@@ -18,6 +18,9 @@ pub fn run() {
         .setup(|app| {
             server::spawn_state_server(app.handle().clone());
             if let Some(window) = app.get_webview_window("main") {
+                if let Err(error) = window.set_shadow(false) {
+                    eprintln!("failed to disable Clawd window shadow: {error}");
+                }
                 window_position::restore_or_offset_window(&window, WINDOW_OFFSET_Y);
             }
             Ok(())
