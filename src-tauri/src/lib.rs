@@ -1,8 +1,6 @@
 mod server;
 mod window_position;
 
-#[cfg(not(target_os = "macos"))]
-use enigo::Mouse;
 use tauri::Manager;
 
 const WINDOW_OFFSET_Y: i32 = -60;
@@ -37,12 +35,7 @@ fn get_cursor_position() -> Result<(f64, f64), String> {
 
     #[cfg(not(target_os = "macos"))]
     {
-        use enigo::Mouse;
-        let enigo = enigo::Enigo::new(&enigo::Settings::default())
-            .map_err(|error| error.to_string())?;
-        enigo.location()
-            .map(|(x, y)| (x as f64, y as f64))
-            .map_err(|error| error.to_string())
+        Err("Cursor fallback is only available on macOS".to_string())
     }
 }
 
