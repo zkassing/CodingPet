@@ -60,7 +60,7 @@ function getSvgForStateFrame(state, frame) {
 }
 
 export default function ClawdPet() {
-  const objectRef = useRef(null);
+  const svgHostRef = useRef(null);
   const stageRef = useRef(null);
   const pointerRef = useRef(null);
   const dragStartRef = useRef(null);
@@ -126,7 +126,7 @@ export default function ClawdPet() {
     const trackingStates = new Set(CLAWD_THEME.eyeTracking.states);
 
     const tick = () => {
-      const svgRoot = objectRef.current?.contentDocument?.documentElement;
+      const svgRoot = svgHostRef.current?.querySelector("svg");
       if (trackingStates.has(state)) {
         applyIdleTracking(svgRoot, pointerRef.current, stageRef.current?.getBoundingClientRect());
       } else {
@@ -255,8 +255,25 @@ export default function ClawdPet() {
   }
 
   const svgFile = useMemo(() => getSvgForStateFrame(state, reactionFrame), [state, reactionFrame]);
+  const [svgMarkup, setSvgMarkup] = useState("");
   const eventLabel = lastEvent?.event || "waiting";
   const sessionLabel = lastEvent?.session_id || "default";
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/clawd/svg/${svgFile}`)
+      .then((response) => response.text())
+      .then((markup) => {
+        if (!cancelled) setSvgMarkup(markup);
+      })
+      .catch((error) => {
+        console.warn("failed to load Clawd SVG", error);
+        if (!cancelled) setSvgMarkup("");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [svgFile]);
 
   return (
     <main className="clawd-shell">
@@ -270,12 +287,11 @@ export default function ClawdPet() {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <object
-          ref={objectRef}
+        <div
+          ref={svgHostRef}
           className="clawd-pet"
-          data={`/clawd/svg/${svgFile}`}
-          type="image/svg+xml"
           aria-label={`Clawd ${state}`}
+          dangerouslySetInnerHTML={{ __html: svgMarkup }}
         />
       </section>
       <section className="clawd-status">

@@ -55,9 +55,15 @@ body,
   height: min(120%, 165px);
   border: 0;
   background: transparent;
-  object-fit: contain;
   image-rendering: pixelated;
   pointer-events: none;
+}
+
+.clawd-pet svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
 }
 
 .clawd-status {
