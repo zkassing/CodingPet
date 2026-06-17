@@ -9,7 +9,7 @@ CodingPet is a Tauri 2 desktop application with a React 19 + Vite frontend and a
 - Frontend code lives in `src/` and is served by Vite during development.
 - Native desktop/backend code lives in `src-tauri/`.
 - `src-tauri/tauri.conf.json` wires Tauri to the frontend: dev mode runs `pnpm dev` and expects Vite at `http://localhost:1420`; production builds run `pnpm build` and bundle `../dist`.
-- The current UI/backend are still close to the Tauri React template: `src/App.jsx` invokes the Rust `greet` command exposed from `src-tauri/src/lib.rs`.
+- The app is a minimal Clawd-only desktop pet. Claude Code hooks post state updates to the Rust local HTTP server, and the React frontend renders matching Clawd SVG animations.
 
 ## Common commands
 
@@ -33,6 +33,10 @@ pnpm tauri build
 
 # Preview the built frontend
 pnpm preview
+
+# Install/uninstall Claude Code state hooks
+pnpm run install:claude-hooks
+pnpm run uninstall:claude-hooks
 ```
 
 Rust-side checks can be run from `src-tauri/`:
@@ -56,16 +60,13 @@ Before committing, inspect `git status` and the relevant diff. Run the relevant 
 
 ## Architecture notes
 
-### Frontend-to-backend boundary
+### Claude Code hook boundary
 
-The React app calls Rust through Tauri commands using `invoke` from `@tauri-apps/api/core`. For example, `src/App.jsx` calls `invoke("greet", { name })`; the matching command is `#[tauri::command] fn greet(...)` registered in `tauri::generate_handler![greet]` in `src-tauri/src/lib.rs`.
+The Rust backend starts a local HTTP server on `127.0.0.1:23333-23337` and writes the active port to `~/.clawd/runtime.json`. Claude Code command hooks in `hooks/clawd-hook.cjs` read hook JSON from stdin, map Claude Code events to Clawd states, and POST to `/state`.
 
-When adding a new native capability:
+The server validates incoming states and emits `clawd-state-change` through Tauri. The React frontend listens for that event in `src/clawd/ClawdPet.jsx`, maps the state through `src/clawd/theme.js`, and renders SVG assets from `public/clawd/svg/`.
 
-1. Implement the Rust function in `src-tauri/src/lib.rs` and annotate it with `#[tauri::command]`.
-2. Add it to the `invoke_handler` list.
-3. Call it from React via `invoke("command_name", payload)`.
-4. If the feature needs Tauri permissions/plugins, update `src-tauri/capabilities/default.json` and `src-tauri/Cargo.toml`/frontend dependencies as appropriate.
+This MVP intentionally does not implement `/permission` approval bubbles; Claude Code permissions remain in Claude Code's native flow.
 
 ### Tauri app structure
 
@@ -75,7 +76,7 @@ The default capability in `src-tauri/capabilities/default.json` applies to the m
 
 ### Frontend structure
 
-`src/main.jsx` mounts React under `React.StrictMode` and renders `App`. `src/App.jsx` currently owns the template state and UI. Styling is centralized in `src/App.css`, including light/dark styles via `prefers-color-scheme`.
+`src/main.jsx` mounts React under `React.StrictMode` and renders `App`. `src/App.jsx` delegates to the Clawd renderer in `src/clawd/ClawdPet.jsx`. Styling is centralized in `src/App.css`; keep the window transparent-friendly because the Tauri window is configured as a small undecorated desktop pet.
 
 ### Development configuration
 
