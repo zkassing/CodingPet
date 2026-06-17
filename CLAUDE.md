@@ -37,6 +37,12 @@ pnpm preview
 # Install/uninstall Claude Code state hooks
 pnpm run install:claude-hooks
 pnpm run uninstall:claude-hooks
+
+# Manually test Clawd state and hook transitions while the app is running
+pnpm run test:state -- thinking
+pnpm run test:hook -- PreToolUse
+pnpm run test:hook -- thinking
+pnpm run test:sequence -- all
 ```
 
 Rust-side checks can be run from `src-tauri/`:
