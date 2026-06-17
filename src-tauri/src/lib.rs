@@ -11,32 +11,9 @@ fn save_window_position(x: i32, y: i32) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_cursor_position() -> Result<(f64, f64), String> {
-    #[cfg(target_os = "macos")]
-    {
-        use core_graphics::display::{CGDisplayBounds, CGMainDisplayID};
-        use core_graphics::event::CGEvent;
-        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
-
-        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
-            .map_err(|_| "Failed to create CGEventSource")?;
-        let event = CGEvent::new(source).map_err(|_| "Failed to create CGEvent")?;
-        let point = event.location();
-
-        unsafe {
-            let main_display = CGMainDisplayID();
-            let bounds = CGDisplayBounds(main_display);
-            let screen_height = bounds.size.height;
-            // Core Graphics uses bottom-left origin, flip to top-left
-            let flipped_y = screen_height - point.y;
-            Ok((point.x as f64, flipped_y as f64))
-        }
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        Err("Cursor fallback is only available on macOS".to_string())
-    }
+fn get_cursor_position(app: tauri::AppHandle) -> Result<(f64, f64), String> {
+    let position = app.cursor_position().map_err(|error| error.to_string())?;
+    Ok((position.x, position.y))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
