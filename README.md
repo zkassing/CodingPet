@@ -46,6 +46,44 @@ CodingPet 是 [`rullerzhou-afk/clawd-on-desk`](https://github.com/rullerzhou-afk
 
 ---
 
+## Roadmap / TODO
+
+下面是本仓库后续计划补齐或新做的能力，按优先级粗略排序。欢迎在 issue 里讨论顺序或认领。
+
+### 近期（P0 / 体验补强）
+
+- [ ] **多 Agent 接入**：在现有 Claude Code + Codex 之外补齐 Gemini CLI / Cursor Agent / Copilot CLI / Qwen Code / opencode 的 Hook 适配
+- [ ] **权限气泡 (Permission Bubble)**：浮窗 Allow / Deny 卡片 + 全局快捷键（`Ctrl+Shift+Y` / `N`），替代当前「沿用 Claude Code 原生权限流」
+- [ ] **多主题 (Theme Pack)**：迁移原版 Calico Cat、Cloudling 主题，并设计可热切换的主题协议（SVG / APNG / WebP 资源 + 状态映射 manifest）
+- [ ] **自定义皮肤导入**：支持把 zip 形式的 Pet 包丢进设置面板即可加载（对齐原版 Codex Pet zip）
+- [ ] **托盘菜单 (System Tray)**：开/关闭 / 切换主题 / 暂停 Hook / 退出
+- [ ] **Mini 模式**：拖到屏幕边缘自动收起，鼠标靠近再弹出
+- [ ] **Do Not Disturb**：勿扰时段静默状态切换与通知
+
+### 中期（P1 / 体验增强）
+
+- [ ] **眼神追随 (Eye Tracking)**：Clawd 的眼睛跟随鼠标位置
+- [ ] **多显示器支持**：记忆每块屏的位置 / 跨屏拖拽
+- [ ] **Session HUD / Dashboard**：当前会话的 token / 工具调用统计悬浮窗
+- [ ] **国际化 (i18n)**：至少补齐 `en` / `zh-CN` / `zh-TW` / `ja` / `ko`
+- [ ] **设置面板**：替代当前散落在配置文件里的开关（自启动、Hook 开关、主题、快捷键）
+
+### 远期（P2 / 大件）
+
+- [ ] **移动端 PWA / 镜像**：LAN-only、token 鉴权，把 agent 会话只读镜像到手机
+- [ ] **JSONL 日志轮询模式**：作为 Hook 不可用时（如某些封闭 IDE）的兜底状态来源
+- [ ] **插件化状态机**：把 Hook → Clawd 状态的映射抽出来，让用户能写脚本自定义新状态
+
+### 工程基础（持续进行）
+
+- [ ] 前端 lint / format（ESLint + Prettier，目前 `package.json` 缺 lint 脚本）
+- [ ] 前端单元测试（Vitest）+ 关键交互的 E2E（Tauri WebDriver）
+- [ ] Rust 侧扩充 `cargo test` 覆盖（目前仅基础检查）
+- [ ] 把性能对比表里的「典型范围」换成原版/本版**实测**数字（含 Activity Monitor / Task Manager 截图）
+- [ ] CI 加上 `cargo fmt --check` / `cargo clippy` / `pnpm build` 三件套
+
+---
+
 ## 项目结构
 
 - `src/`——前端代码，React 19 + Vite。`src/clawd/ClawdPet.jsx` 监听 Tauri 事件并渲染 `public/clawd/svg/` 下的 SVG。
