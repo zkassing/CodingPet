@@ -475,6 +475,19 @@ body,
   width: min(420px, 100%);
 }
 
+.about-hero .about-info-section + .about-info-section {
+  margin-top: 16px;
+}
+
+.about-hero .about-info-section .section-title {
+  text-align: left;
+  margin: 0 0 8px;
+}
+
+.about-hero .about-info-section .row {
+  text-align: left;
+}
+
 .about-info-row {
   display: flex;
   align-items: center;

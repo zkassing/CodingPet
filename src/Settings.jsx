@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import "./Settings.css";
+
+const APP_VERSION = "0.1.2";
+
+const UPDATE_STATUS = {
+  IDLE: "idle",
+  CHECKING: "checking",
+  AVAILABLE: "available",
+  UP_TO_DATE: "up_to_date",
+  DOWNLOADING: "downloading",
+  ERROR: "error",
+};
 
 const DEFAULT_PREFS = {
   version: 1,
@@ -61,6 +74,42 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function updateButtonLabel(state) {
+  switch (state.status) {
+    case UPDATE_STATUS.CHECKING:
+      return "检查中…";
+    case UPDATE_STATUS.AVAILABLE:
+      return "立即更新";
+    case UPDATE_STATUS.DOWNLOADING:
+      return "下载中…";
+    case UPDATE_STATUS.UP_TO_DATE:
+      return "重新检查";
+    case UPDATE_STATUS.ERROR:
+      return "重试";
+    default:
+      return "检查更新";
+  }
+}
+
+function describeUpdateState(state, currentVersion) {
+  switch (state.status) {
+    case UPDATE_STATUS.CHECKING:
+      return "正在向更新服务器查询…";
+    case UPDATE_STATUS.AVAILABLE:
+      return state.update?.version
+        ? `发现新版本 v${state.update.version}，点击立即更新`
+        : "发现新版本，点击立即更新";
+    case UPDATE_STATUS.DOWNLOADING:
+      return "正在下载并安装更新，安装后将自动重启";
+    case UPDATE_STATUS.UP_TO_DATE:
+      return `当前已是最新版本（v${currentVersion}）`;
+    case UPDATE_STATUS.ERROR:
+      return state.error ? `检查失败：${state.error}` : "检查失败，请稍后重试";
+    default:
+      return `当前版本 v${currentVersion}`;
+  }
+}
+
 function Switch({ checked, pending, onToggle, label }) {
   return (
     <button
@@ -103,6 +152,7 @@ export default function Settings() {
   const [toast, setToast] = useState(null);
   const [agents, setAgents] = useState([]);
   const [agentBusy, setAgentBusy] = useState(() => new Set());
+  const [updateState, setUpdateState] = useState({ status: UPDATE_STATUS.IDLE, update: null, error: null });
   const toastTimerRef = useRef(0);
   const sizeCommitTimerRef = useRef(0);
 
@@ -215,6 +265,42 @@ export default function Settings() {
     }
   }
 
+  async function handleCheckForUpdates() {
+    const status = updateState.status;
+    if (status === UPDATE_STATUS.CHECKING || status === UPDATE_STATUS.DOWNLOADING) return;
+
+    if (status === UPDATE_STATUS.AVAILABLE && updateState.update) {
+      setUpdateState((current) => ({ ...current, status: UPDATE_STATUS.DOWNLOADING, error: null }));
+      try {
+        await updateState.update.downloadAndInstall();
+        await relaunch();
+      } catch (error) {
+        console.warn("failed to install update", error);
+        const message = typeof error === "string" ? error : (error && error.message) || "更新安装失败";
+        setUpdateState({ status: UPDATE_STATUS.ERROR, update: null, error: message });
+        showToast(message, "error");
+      }
+      return;
+    }
+
+    setUpdateState({ status: UPDATE_STATUS.CHECKING, update: null, error: null });
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateState({ status: UPDATE_STATUS.AVAILABLE, update, error: null });
+        showToast(`发现新版本 v${update.version}`);
+      } else {
+        setUpdateState({ status: UPDATE_STATUS.UP_TO_DATE, update: null, error: null });
+        showToast("已是最新版本");
+      }
+    } catch (error) {
+      console.warn("failed to check for updates", error);
+      const message = typeof error === "string" ? error : (error && error.message) || "检查更新失败";
+      setUpdateState({ status: UPDATE_STATUS.ERROR, update: null, error: message });
+      showToast(message, "error");
+    }
+  }
+
   if (!prefs) {
     return (
       <div className="settings-loading">
@@ -322,15 +408,6 @@ export default function Settings() {
                     onToggle={() => updatePref("auto_start", !prefs.auto_start)}
                   />
                 </Row>
-
-                <Row label="自动检查更新" desc="定期检查新版本并提示更新">
-                  <Switch
-                    label="自动检查更新"
-                    checked={!!prefs.auto_update_check}
-                    pending={pendingKeys.has("auto_update_check")}
-                    onToggle={() => updatePref("auto_update_check", !prefs.auto_update_check)}
-                  />
-                </Row>
               </Section>
             </>
           ) : activeTab === "agents" ? (
@@ -382,7 +459,7 @@ export default function Settings() {
                 <div className="section-rows">
                   <div className="about-info-row">
                     <div className="about-info-label">版本</div>
-                    <div className="about-info-value">0.1.2</div>
+                    <div className="about-info-value">{APP_VERSION}</div>
                   </div>
                   <div className="about-info-row">
                     <div className="about-info-label">项目</div>
@@ -392,6 +469,33 @@ export default function Settings() {
                       </a>
                     </div>
                   </div>
+                </div>
+              </section>
+
+              <section className="section about-info-section">
+                <h2 className="section-title">更新</h2>
+                <div className="section-rows">
+                  <Row label="自动检查更新" desc="启动时与每 24 小时定期检查新版本">
+                    <Switch
+                      label="自动检查更新"
+                      checked={!!prefs.auto_update_check}
+                      pending={pendingKeys.has("auto_update_check")}
+                      onToggle={() => updatePref("auto_update_check", !prefs.auto_update_check)}
+                    />
+                  </Row>
+                  <Row label="检查更新" desc={describeUpdateState(updateState, APP_VERSION)}>
+                    <button
+                      type="button"
+                      className={`agent-action${updateState.status === UPDATE_STATUS.AVAILABLE ? "" : ""}`}
+                      disabled={
+                        updateState.status === UPDATE_STATUS.CHECKING ||
+                        updateState.status === UPDATE_STATUS.DOWNLOADING
+                      }
+                      onClick={handleCheckForUpdates}
+                    >
+                      {updateButtonLabel(updateState)}
+                    </button>
+                  </Row>
                 </div>
               </section>
             </div>
