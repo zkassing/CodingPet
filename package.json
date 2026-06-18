@@ -10,6 +10,8 @@
     "tauri": "tauri",
     "install:claude-hooks": "node hooks/install-claude-hooks.cjs",
     "uninstall:claude-hooks": "node hooks/install-claude-hooks.cjs --uninstall",
+    "install:codex-hooks": "node hooks/install-codex-hooks.cjs",
+    "uninstall:codex-hooks": "node hooks/install-codex-hooks.cjs --uninstall",
     "test:state": "node hooks/test-state.cjs",
     "test:hook": "node hooks/test-hook-event.cjs",
     "test:sequence": "node hooks/test-sequence.cjs"

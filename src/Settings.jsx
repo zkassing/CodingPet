@@ -15,6 +15,7 @@ const DEFAULT_PREFS = {
 
 const TABS = [
   { id: "general", icon: "⚙", label: "通用" },
+  { id: "agents", icon: "🤖", label: "Agent" },
   { id: "about", icon: "ℹ", label: "关于" },
 ];
 
@@ -68,6 +69,8 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
   const [pendingKeys, setPendingKeys] = useState(() => new Set());
   const [toast, setToast] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [agentBusy, setAgentBusy] = useState(() => new Set());
   const toastTimerRef = useRef(0);
   const sizeCommitTimerRef = useRef(0);
 
@@ -80,6 +83,13 @@ export default function Settings() {
       .catch((error) => {
         console.warn("failed to load preferences", error);
         if (!cancelled) setPrefs(DEFAULT_PREFS);
+      });
+    invoke("list_agent_hooks")
+      .then((list) => {
+        if (!cancelled && Array.isArray(list)) setAgents(list);
+      })
+      .catch((error) => {
+        console.warn("failed to load agent hooks", error);
       });
     return () => {
       cancelled = true;
@@ -145,6 +155,32 @@ export default function Settings() {
       return;
     }
     persist(nextPrefs, key);
+  }
+
+  function setAgentBusyKey(id, busy) {
+    setAgentBusy((current) => {
+      const next = new Set(current);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function toggleAgentHook(agent) {
+    if (!agent) return;
+    const command = agent.installed ? "uninstall_agent_hook" : "install_agent_hook";
+    setAgentBusyKey(agent.id, true);
+    try {
+      const updated = await invoke(command, { agentId: agent.id });
+      setAgents((current) => current.map((item) => (item.id === agent.id ? updated : item)));
+      showToast(updated.installed ? `${agent.name} 已安装` : `${agent.name} 已卸载`);
+    } catch (error) {
+      console.warn("agent hook toggle failed", error);
+      const message = typeof error === "string" ? error : (error && error.message) || "操作失败";
+      showToast(message, "error");
+    } finally {
+      setAgentBusyKey(agent.id, false);
+    }
   }
 
   if (!prefs) {
@@ -263,6 +299,45 @@ export default function Settings() {
                 </Row>
               </Section>
             </>
+          ) : activeTab === "agents" ? (
+            <Section title="Agent Hook">
+              {agents.length === 0 ? (
+                <div className="row">
+                  <div className="row-text">
+                    <span className="row-label">加载中…</span>
+                    <span className="row-desc">正在读取 Agent 状态</span>
+                  </div>
+                </div>
+              ) : (
+                agents.map((agent) => {
+                  const busy = agentBusy.has(agent.id);
+                  const desc = agent.id === "claude-code"
+                    ? "在 ~/.claude/settings.json 中注册生命周期 hook"
+                    : agent.id === "codex"
+                    ? "在 ~/.codex/hooks.json 中注册生命周期 hook（首次使用需在 Codex CLI 中运行 /hooks 信任）"
+                    : "为该 Agent 注册 Clawd 状态 hook";
+                  return (
+                    <Row
+                      key={agent.id}
+                      label={agent.name}
+                      desc={desc}
+                    >
+                      <span className={`agent-status${agent.installed ? " on" : ""}`}>
+                        {agent.installed ? "已安装" : "未安装"}
+                      </span>
+                      <button
+                        type="button"
+                        className={`agent-action${agent.installed ? " danger" : ""}`}
+                        disabled={busy}
+                        onClick={() => toggleAgentHook(agent)}
+                      >
+                        {busy ? "处理中…" : (agent.installed ? "卸载" : "安装")}
+                      </button>
+                    </Row>
+                  );
+                })
+              )}
+            </Section>
           ) : (
             <div className="about-hero">
               <div className="about-crab-wrap" aria-hidden="true">Clawd</div>

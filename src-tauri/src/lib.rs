@@ -1,3 +1,4 @@
+mod agent_hooks;
 mod prefs;
 mod server;
 mod window_position;
@@ -175,6 +176,9 @@ pub fn run() {
             set_click_through,
             set_auto_start,
             show_right_click_menu,
+            agent_hooks::list_agent_hooks,
+            agent_hooks::install_agent_hook,
+            agent_hooks::uninstall_agent_hook,
         ])
         .setup(|app| {
             server::spawn_state_server(app.handle().clone());

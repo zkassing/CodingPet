@@ -38,7 +38,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["icons/tray-icon.png"]
+    "resources": [
+      "icons/tray-icon.png",
+      "../hooks/clawd-hook.cjs",
+      "../hooks/codex-hook.cjs",
+      "../hooks/server-config.cjs",
+      "../hooks/install-claude-hooks.cjs",
+      "../hooks/install-codex-hooks.cjs"
+    ]
   },
   "plugins": {
     "updater": {
