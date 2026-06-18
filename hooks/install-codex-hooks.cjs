@@ -11,7 +11,7 @@ const path = require("path");
 const CODEX_DIR = path.join(os.homedir(), ".codex");
 const HOOKS_PATH = path.join(CODEX_DIR, "hooks.json");
 const CONFIG_PATH = path.join(CODEX_DIR, "config.toml");
-const MARKER = "CodingPet/hooks/codex-hook.cjs";
+const MARKER = "codex-hook.cjs";
 const HOOK_EVENTS = [
   "SessionStart",
   "UserPromptSubmit",

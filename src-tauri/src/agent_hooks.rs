@@ -25,14 +25,14 @@ const AGENTS: &[AgentSpec] = &[
         display_name: "Claude Code",
         install_script: "install-claude-hooks.cjs",
         settings_marker_path: &[".claude", "settings.json"],
-        marker: "CodingPet/hooks/clawd-hook.cjs",
+        marker: "clawd-hook.cjs",
     },
     AgentSpec {
         id: "codex",
         display_name: "Codex",
         install_script: "install-codex-hooks.cjs",
         settings_marker_path: &[".codex", "hooks.json"],
-        marker: "CodingPet/hooks/codex-hook.cjs",
+        marker: "codex-hook.cjs",
     },
 ];
 

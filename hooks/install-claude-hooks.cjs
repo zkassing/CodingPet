@@ -5,7 +5,7 @@ const os = require("os");
 const path = require("path");
 
 const SETTINGS_PATH = path.join(os.homedir(), ".claude", "settings.json");
-const MARKER = "CodingPet/hooks/clawd-hook.cjs";
+const MARKER = "clawd-hook.cjs";
 const HOOK_EVENTS = [
   "SessionStart",
   "SessionEnd",
