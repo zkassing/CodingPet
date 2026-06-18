@@ -180,6 +180,13 @@ export default function Settings() {
     };
   }, []);
 
+  // Suppress the webview's default right-click menu inside the settings window.
+  useEffect(() => {
+    const blockContextMenu = (event) => event.preventDefault();
+    window.addEventListener("contextmenu", blockContextMenu);
+    return () => window.removeEventListener("contextmenu", blockContextMenu);
+  }, []);
+
   const activeTabLabel = useMemo(
     () => TABS.find((tab) => tab.id === activeTab)?.label || "设置",
     [activeTab],
