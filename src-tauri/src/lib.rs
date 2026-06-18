@@ -113,14 +113,14 @@ fn set_auto_start_enabled(enabled: bool) -> Result<(), String> {
     use std::process::Command;
 
     if enabled {
-        let applescript = "tell application \"System Events\" to make login item at end with properties {path:\"/Applications/CodingPet.app\", hidden:false}";
+        let applescript = "tell application \"System Events\" to make login item at end with properties {path:\"/Applications/Coding Pet.app\", hidden:false}";
         let _ = Command::new("osascript")
             .arg("-e")
             .arg(applescript)
             .output()
             .map_err(|e| e.to_string())?;
     } else {
-        let applescript = "tell application \"System Events\" to delete login item \"CodingPet.app\"";
+        let applescript = "tell application \"System Events\" to delete login item \"Coding Pet.app\"";
         let _ = Command::new("osascript")
             .arg("-e")
             .arg(applescript)
