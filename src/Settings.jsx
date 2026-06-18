@@ -4,7 +4,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import "./Settings.css";
 
-const APP_VERSION = "0.1.2";
+const APP_VERSION = "0.1.5";
 
 const UPDATE_STATUS = {
   IDLE: "idle",
