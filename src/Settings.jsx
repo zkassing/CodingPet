@@ -13,10 +13,42 @@ const DEFAULT_PREFS = {
   click_through: false,
 };
 
+function IconSettings(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function IconAgent(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <rect x="4" y="7" width="16" height="12" rx="2" />
+      <path d="M12 7V3" />
+      <circle cx="12" cy="3" r="1" />
+      <path d="M8 13h.01" />
+      <path d="M16 13h.01" />
+      <path d="M9 17h6" />
+    </svg>
+  );
+}
+
+function IconInfo(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 16v-5" />
+      <path d="M12 8h.01" />
+    </svg>
+  );
+}
+
 const TABS = [
-  { id: "general", icon: "⚙", label: "通用" },
-  { id: "agents", icon: "🤖", label: "Agent" },
-  { id: "about", icon: "ℹ", label: "关于" },
+  { id: "general", Icon: IconSettings, label: "通用" },
+  { id: "agents", Icon: IconAgent, label: "Agent" },
+  { id: "about", Icon: IconInfo, label: "关于" },
 ];
 
 const LANGUAGE_OPTIONS = [
@@ -207,7 +239,9 @@ export default function Settings() {
               className={`sidebar-item${activeTab === tab.id ? " active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="sidebar-item-icon">{tab.icon}</span>
+              <span className="sidebar-item-icon">
+                <tab.Icon width={16} height={16} />
+              </span>
               <span className="sidebar-item-label">{tab.label}</span>
             </button>
           ))}
