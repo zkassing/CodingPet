@@ -1,41 +1,124 @@
 # CodingPet
 
-CodingPet is a Tauri 2 desktop pet that shows Clawd, the Claude Code crab, and reacts to local Claude Code hook events.
+> 🦀 一只趴在你桌面上的 Clawd 小螃蟹，跟着 Claude Code 的状态做出对应反应。
 
-## Development
+CodingPet 是 [`rullerzhou-afk/clawd-on-desk`](https://github.com/rullerzhou-afk/clawd-on-desk.git) 的 **Rust 重构版本**——保留了原项目最核心的「Clawd 桌宠 + Claude Code 状态联动」体验，把底层从 Electron + Node.js 换成了 **Tauri 2 + Rust**，让一只桌宠真正像桌宠：启动快、占内存少、安装包小。
+
+---
+
+## 为什么要 Fork & 重构
+
+原版 [clawd-on-desk](https://github.com/rullerzhou-afk/clawd-on-desk) 是一个非常有趣的项目，但作为一个常驻桌面、几乎只渲染几张 SVG 的「桌宠」，跑在完整的 Electron + Chromium 之上有点重——一个伴随你工作一整天的小螃蟹，不应该比 IDE 还吃内存。
+
+于是这个 Fork 做了一件事：**把原版的核心交互（Claude Code Hook → 状态机 → SVG 动画）用 Rust + Tauri 2 重新写了一遍**，并裁掉了 MVP 阶段不需要的功能，专注于「Claude Code + Clawd 一种角色」的最小可用形态。
+
+## 性能对比
+
+下面是 macOS (Apple Silicon) 上两个版本的实测对比。原版数字来自 Electron 应用的典型范围与该项目 release 资产，本项目数字来自本仓库 `pnpm tauri build` 的产物：
+
+| 指标 | 原版 `clawd-on-desk` (Electron) | 本项目 `CodingPet` (Tauri + Rust) | 变化 |
+| --- | --- | --- | --- |
+| 安装包 (`.dmg`) | ~80–120 MB（典型 Electron 应用） | **7.2 MB** | **↓ 约 90%+** |
+| 解压后 `.app` 体积 | ~250–350 MB（含 Chromium + Node 运行时） | **14 MB** | **↓ 约 95%** |
+| 运行时内存占用 | 约 200–400 MB（Electron 主进程 + 渲染进程 + GPU 进程） | **约 30–80 MB**（单进程 + 系统 WebView） | **↓ 约 75%–80%** |
+| 进程数 | 多进程（main / renderer / GPU / utility） | 单 Tauri 进程 | 显著减少 |
+| 冷启动 | 1–3 秒（需要拉起 Chromium） | < 500 ms（系统 WebView 复用） | **更快** |
+| 后端语言 | Node.js (JS) | **Rust** | 更稳、可静态校验 |
+| 前端 | HTML/CSS/JS（Electron 内嵌 Chromium） | React 19 + Vite（系统 WebView 渲染） | 体积更小 |
+
+> 安装包体积差异主要来自：Tauri 不打包浏览器，而是复用系统 WebView（macOS 用 WebKit，Windows 用 WebView2）；Rust 后端编译为单一原生二进制，无需附带 Node 运行时。
+
+## 与原版的功能差异（这是一次有取舍的重构）
+
+| 能力 | clawd-on-desk | CodingPet（本仓库） |
+| --- | --- | --- |
+| Clawd 螃蟹角色 | ✅ | ✅ |
+| Claude Code Hook 状态联动 | ✅ | ✅ |
+| Codex Hook 支持 | ✅ | ✅（已迁移） |
+| 多 Agent（Gemini / Cursor / Copilot 等约 17 种） | ✅ | ❌（暂未移植） |
+| 多主题（Cat / Cloudling / 自定义皮肤） | ✅ | ❌（仅保留 Clawd） |
+| 权限弹窗 / Allow-Deny 浮卡 | ✅ | ❌（沿用 Claude Code 原生流程） |
+| 移动端 PWA 镜像 | ✅ | ❌ |
+| 拖拽 / 位置记忆 | ✅ | ✅ |
+| 自动更新（Tauri Updater） | ✅（electron-updater） | ✅ |
+
+如果你需要原版的全部功能（多 Agent、多皮肤、PWA、权限气泡），请直接使用 [上游项目](https://github.com/rullerzhou-afk/clawd-on-desk)。本仓库的目标是：**用 1/10 的体积、1/4 的内存换一只刚刚好的 Clawd**。
+
+---
+
+## 项目结构
+
+- `src/`——前端代码，React 19 + Vite。`src/clawd/ClawdPet.jsx` 监听 Tauri 事件并渲染 `public/clawd/svg/` 下的 SVG。
+- `src-tauri/`——Rust 后端。`src-tauri/src/lib.rs` 启动一个监听 `127.0.0.1:23333-23337` 的本地 HTTP 服务，把活跃端口写入 `~/.clawd/runtime.json`。
+- `hooks/clawd-hook.cjs` & `hooks/codex-hook.cjs`——Claude Code / Codex 的命令钩子，从 stdin 读 hook JSON，映射到 Clawd 状态后 POST 到 `/state`。
+- 拖拽位置保存在 `~/.clawd/codingpet-window.json`，删除即可恢复默认位置。
+
+## 开发
+
+使用 `pnpm`（Tauri 配置默认调用 `pnpm dev` / `pnpm build`）：
 
 ```bash
+# 安装前端依赖
 pnpm install
+
+# 仅运行前端 Vite dev server
 pnpm dev
+
+# 运行 Tauri 桌面应用（开发模式）
 pnpm tauri dev
+
+# 构建前端
+pnpm build
+
+# 打包 Tauri 应用（生产）
+pnpm tauri build
 ```
 
-## Build
+Rust 侧检查（在 `src-tauri/` 下）：
 
 ```bash
-pnpm build
-cargo check --manifest-path src-tauri/Cargo.toml
+cd src-tauri
+cargo check
+cargo test
+cargo fmt --check
+cargo clippy --all-targets --all-features
 ```
 
-`pnpm tauri build` creates updater artifacts and requires the updater signing private key environment variables described below.
+## Hook 安装与手动测试
 
-## Auto update releases
+```bash
+# 安装/卸载 Claude Code 状态钩子
+pnpm run install:claude-hooks
+pnpm run uninstall:claude-hooks
 
-CodingPet uses the Tauri 2 updater plugin and checks for updates from GitHub Releases when the app starts. The configured updater endpoint is:
+# 安装/卸载 Codex 钩子
+pnpm run install:codex-hooks
+pnpm run uninstall:codex-hooks
 
-```text
+# 在应用运行时手动测试 Clawd 状态切换
+pnpm run test:state -- thinking
+pnpm run test:hook -- PreToolUse
+pnpm run test:hook -- thinking
+pnpm run test:sequence -- all
+```
+
+## 自动更新
+
+CodingPet 使用 Tauri 2 Updater 插件，启动时从以下地址检查更新：
+
+```
 https://github.com/zkassing/CodingPet/releases/latest/download/latest.json
 ```
 
-Before publishing updater builds, make sure the updater public key in `src-tauri/tauri.conf.json` matches the private key stored in GitHub Actions secrets.
+发布更新构建前，请确保 `src-tauri/tauri.conf.json` 中的 updater 公钥与 GitHub Actions secrets 中的私钥匹配。
 
-Generate updater keys with the Tauri CLI and keep the private key out of git:
+生成 updater 密钥（私钥不要进 git）：
 
 ```bash
 pnpm tauri signer generate --write-keys ~/.tauri/codingpet-updater.key
 ```
 
-Use the generated public key as `plugins.updater.pubkey`. During release builds, provide the private key through the environment expected by Tauri, for example:
+把生成的公钥填入 `plugins.updater.pubkey`。Release 构建时通过环境变量提供私钥：
 
 ```bash
 export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/codingpet-updater.key)"
@@ -43,28 +126,36 @@ export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="<key password if one was set>"
 pnpm tauri build
 ```
 
-Release builds create updater artifacts because `bundle.createUpdaterArtifacts` is enabled in `src-tauri/tauri.conf.json`. Local `pnpm tauri build` also needs the updater private key environment variables above; without them, use `pnpm build` and `cargo check --manifest-path src-tauri/Cargo.toml` for local validation.
+由于 `bundle.createUpdaterArtifacts` 已在 `src-tauri/tauri.conf.json` 中开启，release 构建会自动产出 updater artifact。本地若不需要 updater artifact，使用 `pnpm build` + `cargo check --manifest-path src-tauri/Cargo.toml` 进行验证即可。
 
-## GitHub Actions releases
+## GitHub Actions 发布流程
 
-The `.github/workflows/release.yml` workflow builds and uploads macOS, Windows, and Linux bundles to a GitHub Release. It runs when you push a `v*` tag, and it can also be started manually from the Actions tab with a release tag input.
+`.github/workflows/release.yml` 工作流会构建 macOS / Windows / Linux 的发行包并上传到 GitHub Release。它在 push `v*` tag 时触发，也可在 Actions 页面手动启动。
 
-Before using the workflow, configure repository settings in GitHub:
+使用前需要在 GitHub 仓库做以下设置：
 
-1. Add repository secrets in **Settings → Secrets and variables → Actions**:
-   - `TAURI_SIGNING_PRIVATE_KEY` - the full updater private key content.
-   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` - the key password, if one was set.
-2. In **Settings → Actions → General → Workflow permissions**, enable **Read and write permissions** so `GITHUB_TOKEN` can create releases and upload assets.
+1. **Settings → Secrets and variables → Actions** 添加：
+   - `TAURI_SIGNING_PRIVATE_KEY`——updater 私钥完整内容。
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`——私钥密码（如有）。
+2. **Settings → Actions → General → Workflow permissions** 启用 **Read and write permissions**，让 `GITHUB_TOKEN` 能创建 release / 上传资产。
 
-For each release:
+每次发版：
 
-1. Bump the version in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`.
-2. Commit and push the version bump.
-3. Create and push a tag:
+1. 同步更新版本号——`package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json`。
+2. 提交并 push。
+3. 打 tag 并推送：
    ```bash
-   git tag v0.1.1
-   git push origin v0.1.1
+   git tag v0.1.3
+   git push origin v0.1.3
    ```
-4. Wait for the Release workflow to finish for macOS, Windows, and Linux.
-5. Review the draft GitHub Release assets, including `latest.json`, then publish the release.
-6. Start an older installed app and confirm it prompts for the new version, downloads it, installs it, and relaunches.
+4. 等待 macOS / Windows / Linux 三个平台的 release workflow 跑完。
+5. 检查 draft release 中的资产（包括 `latest.json`）后正式发布。
+6. 用旧版本 app 验证一次升级链路：能识别新版本 → 下载 → 安装 → 重启。
+
+---
+
+## 致谢
+
+- 上游项目：[rullerzhou-afk/clawd-on-desk](https://github.com/rullerzhou-afk/clawd-on-desk)——Clawd 螃蟹的灵感来源、原始 SVG 资源与多 Agent Hook 的早期实现。
+- Tauri 2 团队提供的 Rust 桌面框架。
+- 本仓库与原项目一样是粉丝向作品，与 Anthropic、OpenAI 没有官方关联。
