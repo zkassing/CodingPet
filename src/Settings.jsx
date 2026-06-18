@@ -458,7 +458,14 @@ export default function Settings() {
             </Section>
           ) : (
             <div className="about-hero">
-              <div className="about-crab-wrap" aria-hidden="true">Clawd</div>
+              <div className="about-crab-wrap" aria-hidden="true">
+                <img
+                  src="/clawd/svg/clawd-happy.svg"
+                  alt=""
+                  className="about-crab-img"
+                  draggable="false"
+                />
+              </div>
               <h2 className="about-title">CodingPet</h2>
               <p className="about-tagline">你的编程小伙伴 Clawd，陪你保持一点轻盈。</p>
 

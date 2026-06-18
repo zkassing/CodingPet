@@ -455,6 +455,15 @@ body,
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.about-crab-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 
 .about-title {
