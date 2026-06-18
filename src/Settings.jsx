@@ -460,7 +460,7 @@ export default function Settings() {
             <div className="about-hero">
               <div className="about-crab-wrap" aria-hidden="true">
                 <img
-                  src="/clawd/svg/clawd-happy.svg"
+                  src="/app-icon.png"
                   alt=""
                   className="about-crab-img"
                   draggable="false"
