@@ -115,6 +115,15 @@ export default function Settings() {
       if (key === "always_on_top") {
         await invoke("set_always_on_top", { enabled: nextPrefs.always_on_top });
       }
+      if (key === "show_tray") {
+        await invoke("set_tray_visible", { visible: nextPrefs.show_tray });
+      }
+      if (key === "auto_start") {
+        await invoke("set_auto_start", { enabled: nextPrefs.auto_start });
+      }
+      if (key === "click_through") {
+        await invoke("set_click_through", { enabled: nextPrefs.click_through });
+      }
       showToast("已保存");
     } catch (error) {
       console.warn("failed to save preferences", error);
@@ -212,6 +221,15 @@ export default function Settings() {
                     checked={!!prefs.always_on_top}
                     pending={pendingKeys.has("always_on_top")}
                     onToggle={() => updatePref("always_on_top", !prefs.always_on_top)}
+                  />
+                </Row>
+
+                <Row label="穿透点击" desc="点击事件穿透 Clawd 窗口到下方窗口（拖拽仍可用）">
+                  <Switch
+                    label="穿透点击"
+                    checked={!!prefs.click_through}
+                    pending={pendingKeys.has("click_through")}
+                    onToggle={() => updatePref("click_through", !prefs.click_through)}
                   />
                 </Row>
               </Section>

@@ -106,7 +106,6 @@ const NEUTRAL_TRACKING = {
   shadowScale: 1,
 };
 const SHOW_STATUS = import.meta.env.DEV;
-const SETTINGS_CLICK_COUNT = 5;
 const UPDATE_STATUS = {
   IDLE: "idle",
   AVAILABLE: "available",
@@ -132,7 +131,6 @@ export default function ClawdPet() {
   const isDraggingRef = useRef(false);
   const updateCheckStartedRef = useRef(false);
   const clickCountRef = useRef(0);
-  const settingsClickCountRef = useRef(0);
   const clickTimerRef = useRef(null);
   const doubleFrameTimerRef = useRef(null);
   const [state, setState] = useState(DEFAULT_CLAWD_STATE);
@@ -167,7 +165,9 @@ export default function ClawdPet() {
     let unlisten = null;
 
     const applyPrefs = (prefs) => {
-      if (!cancelled && prefs) setPetScale(prefs.size || 1.0);
+      if (!cancelled && prefs) {
+        setPetScale(prefs.size || 1.0);
+      }
     };
 
     invoke("load_preferences")
@@ -307,29 +307,26 @@ export default function ClawdPet() {
     }
   }
 
-  function handleClick(button) {
+  async function handleClick(button, event) {
     if (button === 2) {
       resetClickAccumulator();
       playReaction("clickRight");
+      // Show native context menu (can overflow outside the window)
+      try {
+        await invoke("show_right_click_menu");
+      } catch (error) {
+        console.warn("failed to show context menu", error);
+      }
       return;
     }
 
     clickCountRef.current += 1;
-    settingsClickCountRef.current += 1;
 
     if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
-
-    // Quick click 5 times to open settings
-    if (settingsClickCountRef.current >= SETTINGS_CLICK_COUNT) {
-      settingsClickCountRef.current = 0;
-      openSettings();
-      return;
-    }
 
     clickTimerRef.current = window.setTimeout(() => {
       const count = clickCountRef.current;
       resetClickAccumulator();
-      settingsClickCountRef.current = 0;
       if (count >= ANNOYED_CLICK_COUNT) playReaction("annoyed");
       else if (count >= 2) playReaction("double");
       else playReaction("clickLeft");
@@ -415,7 +412,7 @@ export default function ClawdPet() {
       return;
     }
 
-    handleClick(drag.button);
+    handleClick(drag.button, event);
   }
 
   function handlePointerCancel() {

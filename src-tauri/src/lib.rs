@@ -6,7 +6,7 @@ use prefs::{load_prefs, save_prefs, Preferences};
 
 use tauri::{Emitter, Manager, WebviewWindowBuilder};
 use tauri::tray::TrayIconBuilder;
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{ContextMenu, Menu, MenuItem, PredefinedMenuItem};
 
 const WINDOW_OFFSET_Y: i32 = -60;
 
@@ -65,6 +65,99 @@ fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> Result<(), String>
     Ok(())
 }
 
+#[tauri::command]
+fn set_tray_visible(app: tauri::AppHandle, visible: bool) -> Result<(), String> {
+    if let Some(tray) = app.tray_by_id("tray-main") {
+        tray.set_visible(visible).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_click_through(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_ignore_cursor_events(enabled).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn show_right_click_menu(app: tauri::AppHandle) -> Result<(), String> {
+    let settings_item = MenuItem::new(&app, "设置", true, None::<&str>)
+        .map_err(|error| error.to_string())?;
+
+    let settings_id = settings_item.id().clone();
+
+    let menu = Menu::with_items(&app, &[&settings_item])
+        .map_err(|error| error.to_string())?;
+
+    // Listen for menu events on any menu item and check if it's our settings item
+    app.on_menu_event(move |app_handle, event| {
+        if event.id() == &settings_id {
+            let _ = open_settings_window(app_handle.clone());
+        }
+    });
+
+    // Show menu at cursor position on the main window
+    if let Some(window) = app.get_webview_window("main") {
+        menu.popup(window.as_ref().window().clone())
+            .map_err(|error| error.to_string())?;
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn set_auto_start_enabled(enabled: bool) -> Result<(), String> {
+    use std::process::Command;
+
+    if enabled {
+        let applescript = "tell application \"System Events\" to make login item at end with properties {path:\"/Applications/CodingPet.app\", hidden:false}";
+        let _ = Command::new("osascript")
+            .arg("-e")
+            .arg(applescript)
+            .output()
+            .map_err(|e| e.to_string())?;
+    } else {
+        let applescript = "tell application \"System Events\" to delete login item \"CodingPet.app\"";
+        let _ = Command::new("osascript")
+            .arg("-e")
+            .arg(applescript)
+            .output()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn set_auto_start_enabled(enabled: bool) -> Result<(), String> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    let key = hkcu.open_subkey_with_flags(path, KEY_SET_VALUE).map_err(|e| e.to_string())?;
+
+    if enabled {
+        let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
+        key.set_value("CodingPet", &exe_path.to_string_lossy().to_string())
+            .map_err(|e| e.to_string())?;
+    } else {
+        let _ = key.delete_value("CodingPet");
+    }
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn set_auto_start_enabled(_enabled: bool) -> Result<(), String> {
+    Err("Auto-start is only supported on macOS and Windows".to_string())
+}
+
+#[tauri::command]
+fn set_auto_start(enabled: bool) -> Result<(), String> {
+    set_auto_start_enabled(enabled)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -78,6 +171,10 @@ pub fn run() {
             save_preferences,
             open_settings_window,
             set_always_on_top,
+            set_tray_visible,
+            set_click_through,
+            set_auto_start,
+            show_right_click_menu,
         ])
         .setup(|app| {
             server::spawn_state_server(app.handle().clone());
@@ -89,6 +186,7 @@ pub fn run() {
                 window_position::restore_or_offset_window(&window, WINDOW_OFFSET_Y);
                 // Apply saved preferences
                 let _ = window.set_always_on_top(prefs.always_on_top);
+                let _ = window.set_ignore_cursor_events(prefs.click_through);
             }
 
             // Create system tray
@@ -103,7 +201,7 @@ pub fn run() {
             let tray_icon_bytes = include_bytes!("../icons/tray-icon.png");
             let tray_icon = tauri::image::Image::from_bytes(tray_icon_bytes)?;
 
-            let _tray = TrayIconBuilder::with_id("tray-main")
+            let tray = TrayIconBuilder::with_id("tray-main")
                 .icon(tray_icon)
                 .icon_as_template(true) // For macOS: makes it adapt to light/dark mode
                 .tooltip("Clawd Coding Pet")
@@ -125,6 +223,29 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
+
+            // Apply tray visibility preference
+            let _ = tray.set_visible(prefs.show_tray);
+
+            // Spawn periodic update checker if enabled
+            if prefs.auto_update_check {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    // Check every 24 hours
+                    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60 * 60 * 24));
+                    loop {
+                        interval.tick().await;
+                        // Reload prefs to check if still enabled
+                        let current_prefs = load_prefs();
+                        if !current_prefs.auto_update_check {
+                            break;
+                        }
+                        if let Some(window) = handle.get_webview_window("main") {
+                            let _ = window.emit("check-for-updates", ());
+                        }
+                    }
+                });
+            }
 
             Ok(())
         })
