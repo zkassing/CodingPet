@@ -46,6 +46,45 @@ CodingPet 是 [`rullerzhou-afk/clawd-on-desk`](https://github.com/rullerzhou-afk
 
 ---
 
+## 下载与安装
+
+到 [Releases](https://github.com/zkassing/CodingPet/releases) 页下载对应平台的安装包：
+
+- **macOS Apple Silicon**：`Coding.Pet_*_aarch64.dmg`
+- **macOS Intel**：`Coding.Pet_*_x64.dmg`
+- **Windows**：`Coding.Pet_*_x64-setup.exe` 或 `Coding.Pet_*_x64_en-US.msi`
+- **Linux**：`coding-pet_*_amd64.AppImage` / `.deb`
+
+### ⚠️ macOS 首次打开提示「应用已损坏，无法打开」
+
+**这不是真的损坏**——本仓库目前还没有付费 Apple Developer 证书，分发的安装包是 ad-hoc 签名 + 未公证（unnotarized）。macOS Gatekeeper 看到这种应用会用一句相当吓人的「已损坏」拦下来（不是因为文件真坏了，而是 Apple 对未公证应用的统一文案）。
+
+打开方式（任选其一）：
+
+**方法一（推荐，一行搞定）**：把应用从 dmg 拖到 `/Applications` 后，在终端跑：
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/Coding Pet.app"
+```
+
+输入开机密码 → 回车，之后双击就能正常打开。这条命令的作用是去掉 macOS 给从浏览器下载的文件打的「检疫」标记，对所有未签名的开源 macOS 应用都通用。
+
+**方法二**：右键应用 → 「打开」→ 在弹出的对话框里再点「打开」（macOS 14+ 上这个回退路径在某些场景已经被收紧，如果不行就用方法一）。
+
+**方法三**：**系统设置 → 隐私与安全性** → 滚动到底部，会看到「已阻止使用 "Coding Pet"」→ 点「仍要打开」。
+
+> 等本仓库后续有 Apple Developer 证书 + 公证流水线后，这一步就不需要了。进度跟踪见 Roadmap 的「工程基础」段。
+
+### Windows SmartScreen 提示
+
+Windows 上首次运行会被 SmartScreen 拦下「Windows 已保护你的电脑」，因为安装包没有 EV Code Signing 证书。点 **「更多信息」→「仍要运行」** 即可。
+
+### Linux
+
+`.AppImage` 下载后 `chmod +x` 可直接运行；`.deb` 用 `sudo dpkg -i` 安装。
+
+---
+
 ## Roadmap / TODO
 
 下面是本仓库后续计划补齐或新做的能力，按优先级粗略排序。欢迎在 issue 里讨论顺序或认领。
