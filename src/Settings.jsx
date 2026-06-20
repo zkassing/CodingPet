@@ -24,7 +24,19 @@ const DEFAULT_PREFS = {
   auto_update_check: true,
   always_on_top: true,
   click_through: false,
+  body_color: null,
 };
+
+// Preset body colors for Clawd. The first entry (value: null) means "default",
+// which leaves the SVG's native #DE886D untouched on disk.
+const BODY_COLOR_OPTIONS = [
+  { value: null, label: "默认", color: "#DE886D" },
+  { value: "#4A90D9", label: "海蓝", color: "#4A90D9" },
+  { value: "#6BBF59", label: "草绿", color: "#6BBF59" },
+  { value: "#9B6BD8", label: "幻紫", color: "#9B6BD8" },
+  { value: "#E8C547", label: "柠黄", color: "#E8C547" },
+  { value: "#E05858", label: "莓红", color: "#E05858" },
+];
 
 function IconSettings(props) {
   return (
@@ -375,6 +387,27 @@ export default function Settings() {
                       onChange={(event) => updatePref("size", Number.parseFloat(event.target.value), { debounce: true })}
                     />
                     <span className="volume-readout">{sizePercent}%</span>
+                  </div>
+                </Row>
+
+                <Row label="身体颜色" desc="更换 Clawd 的身体配色">
+                  <div className="color-swatches">
+                    {BODY_COLOR_OPTIONS.map((option) => {
+                      const active = (prefs.body_color ?? null) === option.value;
+                      return (
+                        <button
+                          key={option.label}
+                          type="button"
+                          className={`color-swatch${active ? " active" : ""}`}
+                          style={{ background: option.color }}
+                          title={option.label}
+                          aria-label={option.label}
+                          aria-pressed={active}
+                          disabled={pendingKeys.has("body_color")}
+                          onClick={() => updatePref("body_color", option.value)}
+                        />
+                      );
+                    })}
                   </div>
                 </Row>
 

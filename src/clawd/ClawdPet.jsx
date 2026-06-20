@@ -117,6 +117,19 @@ function cropClawdSvg(markup) {
   return markup.replace(/<svg\b([^>]*)\bviewBox="[^"]*"/, `<svg$1viewBox="${CLAWD_VIEWBOX}"`);
 }
 
+const DEFAULT_BODY_COLOR = "#DE886D";
+
+// Replace every body fill with the user-chosen color. All Clawd SVGs use the
+// same #DE886D for the body (sometimes via id="body-color-group", sometimes
+// inline). Eyes/shadow/sparkles use distinct colors (#000000, #FFD700, ...) so
+// they are untouched. Case-insensitive match covers any casing in the assets.
+function recolorClawdSvg(markup, bodyColor) {
+  if (!bodyColor || bodyColor.toLowerCase() === DEFAULT_BODY_COLOR.toLowerCase()) {
+    return markup;
+  }
+  return markup.replace(/#DE886D/gi, bodyColor);
+}
+
 function getSvgForStateFrame(state, frame) {
   const files = CLAWD_THEME.states[state] || CLAWD_THEME.states[DEFAULT_CLAWD_STATE];
   return files[Math.min(frame, files.length - 1)] || files[0];
@@ -139,6 +152,7 @@ export default function ClawdPet() {
   const [lastEvent, setLastEvent] = useState(null);
   const [updateState, setUpdateState] = useState({ status: UPDATE_STATUS.IDLE, update: null, error: null });
   const [petScale, setPetScale] = useState(1.0);
+  const [bodyColor, setBodyColor] = useState(null);
 
   useEffect(() => {
     if (updateCheckStartedRef.current) return undefined;
@@ -167,6 +181,7 @@ export default function ClawdPet() {
     const applyPrefs = (prefs) => {
       if (!cancelled && prefs) {
         setPetScale(prefs.size || 1.0);
+        setBodyColor(prefs.body_color || null);
       }
     };
 
@@ -437,7 +452,7 @@ export default function ClawdPet() {
     fetch(`/clawd/svg/${svgFile}`)
       .then((response) => response.text())
       .then((markup) => {
-        if (!cancelled) setSvgMarkup(cropClawdSvg(markup));
+        if (!cancelled) setSvgMarkup(recolorClawdSvg(cropClawdSvg(markup), bodyColor));
       })
       .catch((error) => {
         console.warn("failed to load Clawd SVG", error);
@@ -446,7 +461,7 @@ export default function ClawdPet() {
     return () => {
       cancelled = true;
     };
-  }, [svgFile]);
+  }, [svgFile, bodyColor]);
 
   const shellStyle = {
     transform: `scale(${petScale})`,

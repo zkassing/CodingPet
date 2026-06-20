@@ -13,6 +13,11 @@ pub struct Preferences {
     pub auto_update_check: bool,
     pub always_on_top: bool,
     pub click_through: bool,
+    /// Custom Clawd body color (hex string like "#4A90D9").
+    /// None / missing in old prefs files means "use default #DE886D".
+    /// Option<...> makes this backward-compatible without a version migration.
+    #[serde(default)]
+    pub body_color: Option<String>,
 }
 
 impl Default for Preferences {
@@ -26,6 +31,7 @@ impl Default for Preferences {
             auto_update_check: true,
             always_on_top: true,
             click_through: false,
+            body_color: None,
         }
     }
 }
